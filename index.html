@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>STL Inspector</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #1a1a1a;
+            --text-primary: #e5e5e5;
+            --text-secondary: #888888;
+            --accent-primary: #3b82f6;
+            --accent-danger: #ef4444;
+            --border-color: #333333;
+            --card-bg: rgba(20, 20, 20, 0.90);
+            --item-hover: rgba(59, 130, 246, 0.15);
+            --item-active: rgba(59, 130, 246, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        #viewer { position: fixed; inset: 0; z-index: 1; outline: none; }
+        #file-input { display: none; }
+
+        .panel {
+            position: absolute;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        #info-panel { top: 20px; left: 20px; width: 280px; }
+        #list-panel { top: 20px; right: 20px; width: 240px; max-height: 80vh; }
+
+        .title { font-size: 1.1rem; font-weight: 700; color: #fff; }
+
+        .btn {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .btn:hover { border-color: var(--accent-primary); background: #252525; }
+        
+        .btn-danger {
+            color: var(--accent-danger);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--accent-danger);
+        }
+
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem; }
+        .stat-box { background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; }
+        .stat-label { color: var(--text-secondary); margin-bottom: 2px; font-size: 0.7rem; text-transform: uppercase; }
+        .stat-value { color: var(--accent-primary); font-weight: 700; font-family: monospace; }
+
+        .dims-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--accent-primary);
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .dims-label { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px; }
+        .dims-val { font-size: 0.95rem; font-weight: 700; font-family: monospace; }
+
+        #object-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 300px; margin-top: 8px; }
+        #object-list::-webkit-scrollbar { width: 6px; }
+        #object-list::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        
+        .list-item {
+            padding: 8px 10px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .list-item:hover { background: var(--item-hover); }
+        .list-item.active { background: var(--item-active); border-color: var(--accent-primary); color: #fff; }
+        .item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+
+        .color-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary); }
+        input[type="color"] { width: 24px; height: 24px; border: none; padding: 0; background: none; cursor: pointer; }
+
+        .helper-text {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            color: var(--text-secondary); font-size: 0.8rem; pointer-events: none; opacity: 0.7;
+            background: rgba(20,20,20,0.8); border: 1px solid var(--border-color);
+            padding: 6px 16px; border-radius: 20px; white-space: nowrap; z-index: 5;
+        }
+
+        @media (max-width: 768px) {
+            #info-panel { width: calc(100% - 40px); }
+            #list-panel { top: auto; bottom: 20px; left: 20px; width: calc(100% - 40px); max-height: 200px; }
+            .helper-text { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="file-input" accept=".stl" multiple />
+    
+    <div class="panel" id="info-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="title">STL Inspector</div>
+            <button class="btn" onclick="document.getElementById('file-input').click()">+ Add</button>
+        </div>
+
+        <div class="dims-box">
+            <div class="dims-label">DIMENSIONS (W × H × D)</div>
+            <div class="dims-val" id="model-scale">0.0 × 0.0 × 0.0</div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-label">Faces</div>
+                <div class="stat-value" id="stat-faces">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Volume (cm³)</div>
+                <div class="stat-value" id="stat-volume">0.00</div>
+            </div>
+        </div>
+
+        <div class="color-row">
+            <span>Color</span>
+            <input type="color" id="mesh-color" value="#ffffff">
+        </div>
+
+        <button class="btn btn-danger" id="delete-btn" onclick="deleteSelected()" style="display: none;">
+            Delete Selected
+        </button>
+    </div>
+
+    <div class="panel" id="list-panel">
+        <div class="title" style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-secondary);">Objects</div>
+        <div id="object-list">
+            <div style="padding:10px; color:var(--text-secondary); font-size:0.8rem; text-align:center; font-style:italic;">
+                No models loaded
+            </div>
+        </div>
+    </div>
+
+    <div class="helper-text">Left Click: Rotate • Right Click: Select • Left Click: Move</div>
+
+    <div id="viewer"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { TransformControls } from 'three/addons/controls/TransformControls.js';
+        import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+        const container = document.getElementById('viewer');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000); 
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 10000);
+        camera.position.set(100, 100, 200);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.autoClear = false; 
+        container.appendChild(renderer.domElement);
+
+        container.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        const axisScene = new THREE.Scene();
+        const axisCamera = new THREE.OrthographicCamera(-50, 50, 50, -50, 1, 1000);
+        axisCamera.position.set(0, 0, 100);
+        axisCamera.lookAt(0, 0, 0);
+        
+        const axesHelper = new THREE.AxesHelper(40);
+        axesHelper.setColors(new THREE.Color(0xff3653), new THREE.Color(0x8adb00), new THREE.Color(0x2c8fff));
+        axisScene.add(axesHelper);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.1;
+        controls.screenSpacePanning = true;
+        
+        controls.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.PAN,
+            RIGHT: null
+        };
+        controls.rotateSpeed = 0.8;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+
+        const transformControl = new TransformControls(camera, renderer.domElement);
+        transformControl.addEventListener('dragging-changed', function (event) {
+            controls.enabled = !event.value;
+        });
+        scene.add(transformControl);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 200, 100);
+        scene.add(dirLight);
+        
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        backLight.position.set(-50, -50, -50);
+        scene.add(backLight);
+
+        let loadedObjects = [];
+        let selectedId = null;
+        let objectCounter = 0;
+
+        function loadSTLFiles(files) {
+            const loader = new STLLoader();
+
+            Array.from(files).forEach(file => {
+                const url = URL.createObjectURL(file);
+                loader.load(url, (geometry) => {
+                    geometry.center();
+                    geometry.rotateX(-Math.PI / 2);
+                    geometry.computeBoundingBox();
+
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: 0xffffff, 
+                        shininess: 80, 
+                        specular: 0x444444,
+                        side: THREE.DoubleSide 
+                    });
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    
+                    const edgesGeo = new THREE.EdgesGeometry(geometry, 40);
+                    const edgesMat = new THREE.LineBasicMaterial({ color: 0xbbbbbb, transparent: true, opacity: 0.4 });
+                    const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+                    mesh.add(edges); 
+
+                    const id = objectCounter++;
+                    mesh.userData = { id: id, name: file.name };
+                    
+                    if (loadedObjects.length > 0) {
+                        mesh.position.set((Math.random()-0.5)*60, 0, (Math.random()-0.5)*60);
+                    }
+                    
+                    scene.add(mesh);
+                    loadedObjects.push({ mesh, id, name: file.name });
+                    
+                    updateObjectList();
+                    selectObject(id);
+                });
+            });
+        }
+
+        window.deleteSelected = function() {
+            if (selectedId === null) return;
+            
+            const index = loadedObjects.findIndex(o => o.id === selectedId);
+            if (index > -1) {
+                const obj = loadedObjects[index];
+                transformControl.detach();
+                scene.remove(obj.mesh);
+                obj.mesh.geometry.dispose();
+                obj.mesh.material.dispose();
+                
+                loadedObjects.splice(index, 1);
+                
+                if (loadedObjects.length > 0) {
+                    selectObject(loadedObjects[loadedObjects.length - 1].id);
+                } else {
+                    selectObject(null);
+                }
+                
+                updateObjectList();
+            }
+        };
+
+        function updateObjectList() {
+            const listEl = document.getElementById('object-list');
+            listEl.innerHTML = '';
+
+            if (loadedObjects.length === 0) {
+                listEl.innerHTML = '<div style="padding:10px; color:var(--text-secondary); text-align:center;">No models loaded</div>';
+                return;
+            }
+
+            loadedObjects.forEach(obj => {
+                const div = document.createElement('div');
+                div.className = `list-item ${selectedId === obj.id ? 'active' : ''}`;
+                div.innerHTML = `
+                    <span class="item-name">${obj.name}</span>
+                    <span style="font-size:12px; opacity:0.5;">#${obj.id}</span>
+                `;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    selectObject(obj.id);
+                };
+                listEl.appendChild(div);
+            });
+        }
+
+        function selectObject(id) {
+            selectedId = id;
+            const btn = document.getElementById('delete-btn');
+            
+            if (id === null) {
+                transformControl.detach();
+                resetStats();
+                btn.style.display = 'none';
+                updateObjectList();
+                return;
+            }
+
+            const objData = loadedObjects.find(o => o.id === id);
+            if (objData) {
+                transformControl.attach(objData.mesh);
+                updateStats(objData.mesh.geometry);
+                const hex = '#' + objData.mesh.material.color.getHexString();
+                document.getElementById('mesh-color').value = hex;
+                btn.style.display = 'block';
+            }
+            updateObjectList();
+        }
+
+        function updateStats(geometry) {
+            const faces = geometry.attributes.position.count / 3;
+            document.getElementById('stat-faces').textContent = faces.toLocaleString();
+            const size = new THREE.Vector3();
+            geometry.computeBoundingBox();
+            geometry.boundingBox.getSize(size);
+            document.getElementById('model-scale').textContent = 
+                `${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)}`;
+            const volume = (size.x * size.y * size.z * 0.001);
+            document.getElementById('stat-volume').textContent = volume.toFixed(2);
+        }
+
+        function resetStats() {
+            document.getElementById('stat-faces').textContent = '0';
+            document.getElementById('model-scale').textContent = '0.0 × 0.0 × 0.0';
+            document.getElementById('stat-volume').textContent = '0.00';
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                deleteSelected();
+            }
+        });
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        container.addEventListener('pointerdown', (event) => {
+            if (event.button !== 2) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const meshes = loadedObjects.map(o => o.mesh);
+            const intersects = raycaster.intersectObjects(meshes, false);
+
+            if (intersects.length > 0) {
+                const hitObj = intersects[0].object;
+                const objData = loadedObjects.find(o => o.mesh === hitObj);
+                if (objData && objData.id !== selectedId) {
+                    selectObject(objData.id);
+                }
+            } else {
+                selectObject(null);
+            }
+        });
+
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) loadSTLFiles(e.target.files);
+        });
+
+        document.getElementById('mesh-color').addEventListener('input', (e) => {
+            if (selectedId !== null) {
+                const obj = loadedObjects.find(o => o.id === selectedId);
+                if (obj) obj.mesh.material.color.set(e.target.value);
+            }
+        });
+
+        container.addEventListener('dragover', (e) => e.preventDefault());
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const dt = e.dataTransfer;
+            const stlFiles = Array.from(dt.files).filter(f => f.name.toLowerCase().endsWith('.stl'));
+            if (stlFiles.length > 0) loadSTLFiles(stlFiles);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+            renderer.setScissor(0, 0, window.innerWidth, window.innerHeight);
+            renderer.setScissorTest(true);
+            renderer.clear();
+            renderer.render(scene, camera);
+
+            axisCamera.position.copy(camera.position);
+            axisCamera.position.sub(controls.target);
+            axisCamera.position.setLength(200);
+            axisCamera.lookAt(scene.position);
+
+            const size = 150;
+            renderer.setViewport(0, 0, size, size);
+            renderer.setScissor(0, 0, size, size);
+            renderer.setScissorTest(true);
+            renderer.clearDepth();
+            renderer.render(axisScene, axisCamera);
+        }
+        animate();
+    </script>
+</body>
+</html>
